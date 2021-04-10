@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -21,6 +23,7 @@ namespace Roslyn.Testing.CodeFix
 		/// <param name="document"> The Document to apply the fix on </param>
 		/// <param name="codeAction"> A CodeAction that will be applied to the Document. </param>
 		/// <returns> A Document with the changes from the CodeAction </returns>
+		[UsedImplicitly]
 		public static Document ApplyFix(this Document document, CodeAction codeAction)
 		{
 			var operations = codeAction.GetOperationsAsync(CancellationToken.None).GetAwaiter().GetResult();
@@ -63,6 +66,7 @@ namespace Roslyn.Testing.CodeFix
 		/// other warnings after being applied
 		/// </param>
 		/// <param name="additionalReferences"></param>
+		[UsedImplicitly]
 		public static VerifyCodeFixProviderResult VerifyFix(this CodeFixProvider codeFixProvider,
 															string language,
 															DiagnosticAnalyzer analyzer,
@@ -122,7 +126,7 @@ namespace Roslyn.Testing.CodeFix
 			}
 
 			//after applying all of the code fixes, compare the resulting string to the inputted one
-			var actual = document.GetStringFromDocument();
+			var actual = document.GetStringFromDocument().GetAwaiter().GetResult();
 
 			return newSource.Equals(actual)
 				? VerifyCodeFixProviderResult.Ok()
@@ -145,7 +149,12 @@ namespace Roslyn.Testing.CodeFix
 		/// <returns> The compiler diagnostics that were found in the code </returns>
 		private static IEnumerable<Diagnostic> GetCompilerDiagnostics(this Document document)
 		{
-			return document.GetSemanticModelAsync().GetAwaiter().GetResult().GetDiagnostics();
+			if (!document.TryGetSemanticModel(out var semanticModel))
+			{
+				return Array.Empty<Diagnostic>();
+			}
+
+			return semanticModel.GetDiagnostics();
 		}
 
 		/// <summary>
@@ -153,10 +162,16 @@ namespace Roslyn.Testing.CodeFix
 		/// </summary>
 		/// <param name="document"> The Document to be converted to a string </param>
 		/// <returns> A string containing the syntax of the Document after formatting </returns>
-		public static string GetStringFromDocument(this Document document)
+		[UsedImplicitly]
+		public static async Task<string> GetStringFromDocument(this Document document)
 		{
-			var simplifiedDoc = Simplifier.ReduceAsync(document, Simplifier.Annotation).GetAwaiter().GetResult();
-			var root = simplifiedDoc.GetSyntaxRootAsync().GetAwaiter().GetResult();
+			var simplifiedDoc = await Simplifier.ReduceAsync(document, Simplifier.Annotation).ConfigureAwait(false);
+
+			if (!simplifiedDoc.TryGetSyntaxRoot(out var root))
+			{
+				return string.Empty;
+			}
+
 			root = Formatter.Format(root, Formatter.Annotation, simplifiedDoc.Project.Solution.Workspace);
 
 			return root.GetText().ToString();

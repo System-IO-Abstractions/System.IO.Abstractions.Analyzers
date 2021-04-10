@@ -12,36 +12,54 @@ using Roslyn.Testing.Model;
 
 namespace Roslyn.Testing.Analyzer
 {
+	/// <summary>
+	/// Extension methods
+	/// </summary>
 	internal static class DiagnosticAnalyzerTestExtensions
 	{
-		private static readonly MetadataReference CorlibReference =
+		/// <summary>
+		/// Metadata References for Core library
+		/// </summary>
+		private static readonly MetadataReference CoreLibraryReference =
 			MetadataReference.CreateFromFile(typeof(object).Assembly.Location);
 
+		/// <summary>
+		/// Metadata References for Core System library
+		/// </summary>
 		private static readonly MetadataReference SystemCoreReference =
 			MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location);
 
+		/// <summary>
+		/// Metadata References for CSharp Symbols
+		/// </summary>
 		private static readonly MetadataReference CSharpSymbolsReference =
 			MetadataReference.CreateFromFile(typeof(CSharpCompilation).Assembly.Location);
 
+		/// <summary>
+		/// Metadata References for Code Analysis
+		/// </summary>
 		private static readonly MetadataReference CodeAnalysisReference =
 			MetadataReference.CreateFromFile(typeof(Compilation).Assembly.Location);
 
-		private static readonly MetadataReference SystemDiagReference =
+		/// <summary>
+		/// Metadata References for System Diagnostic
+		/// </summary>
+		private static readonly MetadataReference SystemDiagnosticReference =
 			MetadataReference.CreateFromFile(typeof(Process).Assembly.Location);
 
-		internal static string DefaultFilePathPrefix = "Test";
+		internal const string DefaultFilePathPrefix = "Test";
 
-		internal static string CSharpDefaultFileExt = "cs";
+		internal const string CSharpDefaultFileExt = "cs";
 
-		internal static string VisualBasicDefaultExt = "vb";
+		internal const string VisualBasicDefaultExt = "vb";
 
-		internal static string TestProjectName = "TestProject";
+		internal const string TestProjectName = "TestProject";
 
-	#region  [Get Diagnostics]
+	#region [Get Diagnostics]
 
 		/// <summary>
 		/// Given classes in the form of strings, their language, and an
-		/// IDiagnosticAnlayzer to apply to it, return the diagnostics found in the string
+		/// IDiagnosticAnalyzer to apply to it, return the diagnostics found in the string
 		/// after converting it to a document.
 		/// </summary>
 		/// <param name="sources"> Classes in the form of strings </param>
@@ -85,7 +103,10 @@ namespace Roslyn.Testing.Analyzer
 			foreach (var project in projects)
 			{
 				var compilationWithAnalyzers =
-					project.GetCompilationAsync().GetAwaiter().GetResult().WithAnalyzers(ImmutableArray.Create(analyzer));
+					project.GetCompilationAsync()
+						.GetAwaiter()
+						.GetResult()
+						.WithAnalyzers(ImmutableArray.Create(analyzer));
 
 				var diags = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().GetAwaiter().GetResult();
 
@@ -140,7 +161,8 @@ namespace Roslyn.Testing.Analyzer
 		/// A Tuple containing the Documents produced from the sources and their TextSpans
 		/// if relevant
 		/// </returns>
-		private static Document[] GetDocuments(string[] sources, string language, IEnumerable<MetadataReference> references = null)
+		private static Document[] GetDocuments(string[] sources, string language,
+												IEnumerable<MetadataReference> references = null)
 		{
 			if (language != LanguageNames.CSharp && language != LanguageNames.VisualBasic)
 			{
@@ -165,7 +187,8 @@ namespace Roslyn.Testing.Analyzer
 		/// <param name="language"> The language the source code is in </param>
 		/// <param name="references"></param>
 		/// <returns> A Document created from the source string </returns>
-		public static Document CreateDocument(string source, string language, IEnumerable<MetadataReference> references = null)
+		public static Document CreateDocument(string source, string language,
+											IEnumerable<MetadataReference> references = null)
 		{
 			return CreateProject(new[] { source }, language, references).Documents.First();
 		}
@@ -180,7 +203,8 @@ namespace Roslyn.Testing.Analyzer
 		/// A Project created out of the Documents created from the source
 		/// strings
 		/// </returns>
-		private static Project CreateProject(string[] sources, string language, IEnumerable<MetadataReference> references = null)
+		private static Project CreateProject(string[] sources, string language,
+											IEnumerable<MetadataReference> references = null)
 		{
 			var fileNamePrefix = DefaultFilePathPrefix;
 			var fileExt = language == LanguageNames.CSharp ? CSharpDefaultFileExt : VisualBasicDefaultExt;
@@ -190,11 +214,11 @@ namespace Roslyn.Testing.Analyzer
 			var solution = new AdhocWorkspace()
 				.CurrentSolution
 				.AddProject(projectId, TestProjectName, TestProjectName, language)
-				.AddMetadataReference(projectId, CorlibReference)
+				.AddMetadataReference(projectId, CoreLibraryReference)
 				.AddMetadataReference(projectId, SystemCoreReference)
 				.AddMetadataReference(projectId, CSharpSymbolsReference)
 				.AddMetadataReference(projectId, CodeAnalysisReference)
-				.AddMetadataReference(projectId, SystemDiagReference);
+				.AddMetadataReference(projectId, SystemDiagnosticReference);
 
 			if (references != null)
 			{
